@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="bg" class="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Школо - Електронен Дневник</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* Принудителна светла тема за избягване на проблеми с тъмен режим на някои телефони */
+    :root { color-scheme: light !important; }
+    body { background-color: #f3f4f6 !important; color: #1f2937 !important; -webkit-tap-highlight-color: transparent; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+    
+    /* Персонализирани баджове за отзивите */
+    .badge-mark { background-color: #10b981; color: white; }
+    .badge-praise { background-color: #f59e0b; color: white; }
+    .badge-note { background-color: #ef4444; color: white; }
+    
+    /* Анимации */
+    .fade-in { animation: fadeIn 0.3s ease-in-out; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+  </style>
+</head>
+<body class="bg-gray-100 text-gray-800 min-h-screen pb-12 antialiased">
+
+  <!-- Хедър -->
+  <header class="bg-blue-600 text-white shadow-md sticky top-0 z-30">
+    <div class="max-w-4xl mx-auto px-4 py-3 flex justify-between items-center">
+      <div class="flex items-center space-x-2">
+        <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
+        <h1 class="text-xl font-bold tracking-wide">ШКОЛО</h1>
+      </div>
+      <span class="text-xs bg-blue-700 px-2.5 py-1 rounded-full font-medium shadow-inner border border-blue-500">Учителски профил</span>
+    </div>
+  </header>
+
+  <!-- Навигация (Табове) -->
+  <nav class="bg-white border-b border-gray-200 sticky top-[52px] z-20 shadow-sm">
+    <div class="max-w-4xl mx-auto flex">
+      <button id="nav-journal" onclick="switchTab('journal')" class="flex-1 py-3 text-center text-sm font-semibold border-b-2 border-blue-600 text-blue-600 transition">
+        Дневник & Оценки
+      </button>
+      <button id="nav-classes" onclick="switchTab('classes')" class="flex-1 py-3 text-center text-sm font-semibold border-b-2 border-transparent text-gray-500 hover:text-gray-700 transition">
+        Класове & Ученици
+      </button>
+    </div>
+  </nav>
+
+  <main class="max-w-4xl mx-auto px-4 pt-4">
+
+    <!-- ============================================== -->
+    <!-- ТАБ 1: ДНЕВНИК -->
+    <!-- ============================================== -->
+    <div id="tab-journal" class="space-y-4 fade-in">
+      
+      <!-- Бутон за скриване/показване на селектора -->
+      <div class="flex justify-end">
+        <button onclick="toggleSelectorBox()" class="text-xs bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-1.5 px-3 rounded-lg flex items-center space-x-1 transition active:scale-95 shadow-sm">
+          <span>👁️</span>
+          <span id="toggle-btn-text">Скрий избор на ученик</span>
+        </button>
+      </div>
+
+      <!-- Кутия за избор на клас и ученик -->
+      <div id="selector-box" class="bg-white p-4 rounded-xl shadow-sm border border-gray-200 transition-all">
+        <h2 class="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">Избор на профил</h2>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-medium text-gray-600 mb-1">1. Избери Клас:</label>
+            <select id="select-class" onchange="loadStudentsForJournal()" class="w-full bg-gray-50 border border-gray-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none transition">
+              <option value="">-- Зареждане... --</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-600 mb-1">2. Избери Ученик:</label>
+            <select id="select-student" onchange="renderStudentProfile()" class="w-full bg-gray-50 border border-gray-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none transition disabled:opacity-50">
+              <option value="">-- Избери първо клас --</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Профил на избрания ученик -->
+      <div id="student-profile" class="hidden bg-white rounded-xl shadow-sm border border-gray-200 p-4 space-y-4 fade-in">
+        
+        <!-- Заглавна част със Среден успех -->
+        <div class="border-b border-gray-100 pb-3 flex justify-between items-start">
+          <div>
+            <span id="profile-class-badge" class="text-xs font-bold text-blue-600 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded">Клас</span>
+            <h2 id="student-name-title" class="text-xl md:text-2xl font-bold text-gray-900 mt-1">Име на ученик</h2>
+          </div>
+          <div class="text-right bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-100">
+            <span class="text-[10px] uppercase font-bold text-emerald-600 block">Среден успех</span>
+            <span id="student-gpa" class="text-xl md:text-2xl font-black text-emerald-600 leading-none">-</span>
+          </div>
+        </div>
+
+        <!-- Форма за добавяне на запис -->
+        <div class="bg-gray-50 p-4 rounded-lg border border-gray-200 space-y-3">
+          <h3 class="text-xs font-bold text-gray-600 uppercase">Нова оценка / отзив</h3>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            <select id="entry-type" onchange="updateEntryInputPlaceholder()" class="bg-white border border-gray-300 rounded-lg p-2.5 text-sm outline-none focus:border-blue-500">
+              <option value="mark">📊 Оценка (2-6)</option>
+              <option value="praise">🌟 Похвала</option>
+              <option value="note">⚠️ Забележка</option>
+            </select>
+            <input type="text" id="entry-text" placeholder="Оценка (напр. 6)" class="bg-white border border-gray-300 rounded-lg p-2.5 text-sm sm:col-span-2 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
+          </div>
+          <button onclick="addEntry()" class="w-full bg-blue-600 hover:bg-blue-700 active:scale-[0.98] text-white font-semibold py-2.5 rounded-lg text-sm transition shadow-sm">
+            Запази в дневника
+          </button>
+        </div>
+
+        <!-- Таблица с история -->
+        <div>
+          <h3 class="text-sm font-bold text-gray-700 mb-2">История на записите</h3>
+          <div class="overflow-x-auto rounded-lg border border-gray-100">
+            <table class="w-full text-left text-sm whitespace-nowrap md:whitespace-normal">
+              <thead class="bg-gray-50 text-gray-500 text-xs uppercase border-b border-gray-200">
+                <tr>
+                  <th class="p-3 font-semibold">Тип</th>
+                  <th class="p-3 font-semibold w-full">Съдържание</th>
+                  <th class="p-3 text-right font-semibold">Дата</th>
+                </tr>
+              </thead>
+              <tbody id="entries-list" class="divide-y divide-gray-100 bg-white">
+                <!-- Динамично генерирани редове -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Съобщение, когато не е избран ученик -->
+      <div id="empty-state" class="bg-white rounded-xl p-8 text-center text-gray-400 border border-gray-200 fade-in">
+        <svg class="w-12 h-12 mx-auto mb-3 opacity-40 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
+        <p class="text-sm font-medium text-gray-500">Избери клас и ученик от менюто по-горе, за да отвориш дневника.</p>
+      </div>
+
+    </div>
+
+    <!-- ============================================== -->
+    <!-- ТАБ 2: КЛАСОВЕ И УЧЕНИЦИ -->
+    <!-- ============================================== -->
+    <div id="tab-classes" class="hidden space-y-4 fade-in">
+      
+      <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-200">
+        <h2 class="text-sm font-bold text-gray-700 uppercase mb-3 flex items-center"><span class="text-blue-500 mr-2 text-lg">+</span> Добавяне на Нов Клас</h2>
+        <div class="flex gap-2">
+          <input type="text" id="new-class-name" placeholder="Напр. 5А, 6Б..." class="flex-1 bg-gray-50 border border-gray-300 rounded-lg p-2.5 text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition">
+          <button onclick="addClass()" class="bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-semibold px-4 py-2.5 rounded-lg text-sm transition whitespace-nowrap shadow-sm">
+            Създай
+          </button>
+        </div>
+      </div>
+
+      <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-200">
+        <h2 class="text-sm font-bold text-gray-700 uppercase mb-3 flex items-center"><span class="text-emerald-500 mr-2 text-lg">👤</span> Добавяне на Ученик</h2>
+        <div class="space-y-3">
+          <div>
+            <label class="block text-xs font-medium text-gray-600 mb-1">В кой клас?</label>
+            <select id="add-student-class-select" class="w-full bg-gray-50 border border-gray-300 rounded-lg p-2.5 text-sm focus:outline-none focus:border-blue-500"></select>
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-600 mb-1">Име и Фамилия:</label>
+            <input type="text" id="new-student-name" placeholder="Напр. Иван Иванов" class="w-full bg-gray-50 border border-gray-300 rounded-lg p-2.5 text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition">
+          </div>
+          <button onclick="addStudent()" class="w-full bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white font-semibold py-2.5 rounded-lg text-sm transition shadow-sm mt-2">
+            Запиши ученика
+          </button>
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- ============================================== -->
+  <!-- СИСТЕМА ЗА ИЗВЕСТИЯ (TOAST) -->
+  <!-- ============================================== -->
+  <div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-sm font-medium px-5 py-3 rounded-xl shadow-2xl transition-all duration-300 opacity-0 translate-y-4 pointer-events-none z-50 flex items-center space-x-2">
+    <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+    <span id="toast-msg">Известие</span>
+  </div>
+
+  <script>
+    // 1. Инициализация на примерни данни
+    const INITIAL_DATA = {
+      classes: [
+        { id: "c1", name: "5А" },
+        { id: "c2", name: "6Б" }
+      ],
+      students: [
+        { id: "s1", classId: "c1", name: "Александър Табаков", entries: [
+          { type: "mark", text: "6", date: "04.11.2026" },
+          { type: "praise", text: "Отлично представяне по информатика!", date: "05.11.2026" }
+        ]},
+        { id: "s2", classId: "c1", name: "Платон Василев", entries: [
+          { type: "mark", text: "6", date: "05.11.2026" },
+          { type: "note", text: "Говори в час.", date: "06.11.2026" }
+        ]}
+      ]
+    };
+
+    // Зареждане от localStorage или ползване на примерните данни
+    let data = JSON.parse(localStorage.getItem('skolo_school_db')) || INITIAL_DATA;
+
+    // 2. Основни функции
+    function saveData() {
+      localStorage.setItem('skolo_school_db', JSON.stringify(data));
+    }
+
+    // Собствен Toast вместо alert()
+    function showToast(msg, isError = false) {
+      const toast = document.getElementById('toast');
+      const toastMsg = document.getElementById('toast-msg');
+      const icon = toast.querySelector('svg');
+      
+      toastMsg.innerText = msg;
+      
+      if (isError) {
+        toast.classList.replace('bg-gray-900', 'bg-red-600');
+        icon.classList.replace('text-emerald-400', 'text-white');
+        icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>';
+      } else {
+        toast.classList.replace('bg-red-600', 'bg-gray-900');
+        icon.classList.replace('text-white', 'text-emerald-400');
+        icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>';
+      }
+
+      toast.classList.remove('opacity-0', 'translate-y-4');
+      toast.classList.add('opacity-100', 'translate-y-0');
+      
+      setTimeout(() => {
+        toast.classList.remove('opacity-100', 'translate-y-0');
+        toast.classList.add('opacity-0', 'translate-y-4');
+      }, 3000);
+    }
+
+    // Превключване на табовете
+    function switchTab(tabName) {
+      document.getElementById('tab-journal').classList.toggle('hidden', tabName !== 'journal');
+      document.getElementById('tab-classes').classList.toggle('hidden', tabName !== 'classes');
+      
+      const navJ = document.getElementById('nav-journal');
+      const navC = document.getElementById('nav-classes');
+
+      if (tabName === 'journal') {
+        navJ.className = "flex-1 py-3 text-center text-sm font-semibold border-b-2 border-blue-600 text-blue-600 transition";
+        navC.className = "flex-1 py-3 text-center text-sm font-semibold border-b-2 border-transparent text-gray-500 hover:text-gray-700 transition";
+      } else {
+        navC.className = "flex-1 py-3 text-center text-sm font-semibold border-b-2 border-blue-600 text-blue-600 transition";
+        navJ.className = "flex-1 py-3 text-center text-sm font-semibold border-b-2 border-transparent text-gray-500 hover:text-gray-700 transition";
+      }
+      populateClassDropdowns();
+    }
+
+    // Скриване/Показване на менюто за избор
+    function toggleSelectorBox() {
+      const box = document.getElementById('selector-box');
+      const btnText = document.getElementById('toggle-btn-text');
+      box.classList.toggle('hidden');
+      btnText.innerText = box.classList.contains('hidden') ? 'Покажи избор на ученик' : 'Скрий избор на ученик';
+    }
+
+    // Зареждане на класовете в падащите менюта
+    function populateClassDropdowns() {
+      const selectJournal = document.getElementById('select-class');
+      const selectAddStudent = document.getElementById('add-student-class-select');
+
+      const currentJournalVal = selectJournal.value;
+      
+      let html = '<option value="">-- Избери клас --</option>';
+      data.classes.forEach(c => html += `<option value="${c.id}">Клас ${c.name}</option>`);
+
+      selectJournal.innerHTML = html;
+      selectAddStudent.innerHTML = html;
+      
+      if (currentJournalVal) selectJournal.value = currentJournalVal;
+    }
+
+    // Зареждане на учениците според избрания клас
+    function loadStudentsForJournal() {
+      const classId = document.getElementById('select-class').value;
+      const studentSelect = document.getElementById('select-student');
+      
+      document.getElementById('student-profile').classList.add('hidden');
+      document.getElementById('empty-state').classList.remove('hidden');
+
+      if (!classId) {
+        studentSelect.innerHTML = '<option value="">-- Избери първо клас --</option>';
+        studentSelect.disabled = true;
+        return;
+      }
+
+      const filtered = data.students.filter(s => s.classId === classId);
+      let html = '<option value="">-- Избери ученик --</option>';
+      filtered.forEach(s => html += `<option value="${s.id}">${s.name}</option>`);
+      
+      studentSelect.innerHTML = html;
+      studentSelect.disabled = false;
+    }
+
+    // Показване на профила и изчисляване на среден успех
+    function renderStudentProfile() {
+      const studentId = document.getElementById('select-student').value;
+      const profileCard = document.getElementById('student-profile');
+      const emptyState = document.getElementById('empty-state');
+
+      if (!studentId) {
+        profileCard.classList.add('hidden');
+        emptyState.classList.remove('hidden');
+        return;
+      }
+
+      const student = data.students.find(s => s.id === studentId);
+      if (!student) return;
+
+      const cls = data.classes.find(c => c.id === student.classId);
+      document.getElementById('profile-class-badge').innerText = `Клас ${cls ? cls.name : ''}`;
+      document.getElementById('student-name-title').innerText = student.name;
+
+      // Изчисляване на Среден Успех (GPA)
+      const marks = (student.entries || [])
+                      .filter(e => e.type === 'mark')
+                      .map(e => parseFloat(e.text.replace(',', '.')))
+                      .filter(n => !isNaN(n));
+                      
+      const gpa = marks.length > 0 ? (marks.reduce((a, b) => a + b, 0) / marks.length).toFixed(2) : '-';
+      document.getElementById('student-gpa').innerText = gpa;
+
+      // Рендериране на историята
+      const tbody = document.getElementById('entries-list');
+      tbody.innerHTML = '';
+
+      if (!student.entries || student.entries.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="3" class="p-4 text-center text-gray-400 italic">Няма записани оценки или отзиви.</td></tr>';
+      } else {
+        [...student.entries].reverse().forEach(e => {
+          let badge = '';
+          if (e.type === 'mark') badge = `<span class="px-2.5 py-1 rounded text-xs font-bold badge-mark shadow-sm">Оценка ${e.text}</span>`;
+          else if (e.type === 'praise') badge = `<span class="px-2.5 py-1 rounded text-xs font-bold badge-praise shadow-sm">Похвала</span>`;
+          else badge = `<span class="px-2.5 py-1 rounded text-xs font-bold badge-note shadow-sm">Забележка</span>`;
+
+          tbody.innerHTML += `
+            <tr class="hover:bg-blue-50/50 transition">
+              <td class="p-3 font-medium align-middle">${badge}</td>
+              <td class="p-3 text-gray-800 text-sm align-middle">${e.type === 'mark' ? 'Вписана оценка' : e.text}</td>
+              <td class="p-3 text-right text-xs text-gray-400 font-medium align-middle whitespace-nowrap">${e.date}</td>
+            </tr>
+          `;
+        });
+      }
+
+      emptyState.classList.add('hidden');
+      profileCard.classList.remove('hidden');
+    }
+
+    // Промяна на плейсхолдъра спрямо вида запис
+    function updateEntryInputPlaceholder() {
+      const type = document.getElementById('entry-type').value;
+      const input = document.getElementById('entry-text');
+      if (type === 'mark') input.placeholder = "Оценка от 2 до 6 (напр. 5.50)";
+      else if (type === 'praise') input.placeholder = "Текст на похвалата...";
+      else input.placeholder = "Текст на забележката...";
+    }
+
+    // 3. Добавяне на нови данни
+    function addEntry() {
+      const studentId = document.getElementById('select-student').value;
+      const type = document.getElementById('entry-type').value;
+      const input = document.getElementById('entry-text');
+      const text = input.value.trim();
+
+      if (!studentId) return showToast('Моля, избери ученик!', true);
+      if (!text) return showToast('Моля, въведи съдържание!', true);
+
+      if (type === 'mark') {
+        const markVal = parseFloat(text.replace(',', '.'));
+        if (isNaN(markVal) || markVal < 2 || markVal > 6) {
+          return showToast('Оценката трябва да е число между 2 и 6!', true);
+        }
+      }
+
+      const student = data.students.find(s => s.id === studentId);
+      if (!student) return;
+
+      if (!student.entries) student.entries = [];
+      const today = new Date();
+      const dateStr = today.getDate().toString().padStart(2, '0') + '.' + (today.getMonth() + 1).toString().padStart(2, '0') + '.' + today.getFullYear();
+
+      student.entries.push({ type, text, date: dateStr });
+      saveData();
+      input.value = '';
+      renderStudentProfile();
+      showToast('Записът е добавен в дневника!');
+    }
+
+    function addClass() {
+      const input = document.getElementById('new-class-name');
+      const name = input.value.trim();
+      if (!name) return showToast('Въведи име на класа!', true);
+
+      data.classes.push({ id: 'cls_' + Date.now(), name });
+      saveData();
+      input.value = '';
+      populateClassDropdowns();
+      showToast(`Клас ${name} е създаден!`);
+    }
+
+    function addStudent() {
+      const classId = document.getElementById('add-student-class-select').value;
+      const nameInput = document.getElementById('new-student-name');
+      const name = nameInput.value.trim();
+
+      if (!classId) return showToast('Избери клас!', true);
+      if (!name) return showToast('Въведи име и фамилия!', true);
+
+      data.students.push({ id: 'std_' + Date.now(), classId, name, entries: [] });
+      saveData();
+      nameInput.value = '';
+      
+      // Ако сме в същия клас в дневника, презареждаме учениците
+      if(document.getElementById('select-class').value === classId) {
+          loadStudentsForJournal();
+      }
+      
+      showToast('Ученикът е записан успешно!');
+    }
+
+    // Стартиране
+    populateClassDropdowns();
+  </script>
+</body>
+</html>
